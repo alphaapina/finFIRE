@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finnish FIRE Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface2: #f0f2f6;
+    --border: #dde1ea;
+    --accent: #1a6ef5;
+    --accent2: #0ea86e;
+    --text: #1a1f2e;
+    --text2: #5a6278;
+    --text3: #9ba3b8;
+    --danger: #e03040;
+    --warn: #d97706;
+    --success: #0ea86e;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius: 10px;
+    --radius-sm: 7px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(26,110,245,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,110,245,0.04) 1px, transparent 1px);
+    background-size: 36px 36px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 18px 36px;
+  }
+
+  header {
+    margin-bottom: 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .header-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  h1 {
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 300;
+    margin-left: auto;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 296px 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 13px 15px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .panel-title {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 11px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .input-group { margin-bottom: 9px; }
+
+  .input-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+
+  .input-label span:first-child {
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+  }
+
+  .input-value {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 0 3px rgba(26,110,245,0.15);
+    transition: box-shadow 0.2s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 5px rgba(26,110,245,0.2);
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 9px 0;
+  }
+
+  .results-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  @media (max-width: 600px) { .results-strip { grid-template-columns: 1fr; } }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 11px 13px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    transition: border-color 0.3s;
+  }
+
+  .result-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--accent));
+  }
+
+  .result-card.good { --card-accent: var(--success); }
+  .result-card.warn { --card-accent: var(--warn); }
+  .result-card.bad  { --card-accent: var(--danger); }
+
+  .result-label {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  .result-value {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .result-sub {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text3);
+    margin-top: 3px;
+  }
+
+  .chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 13px 15px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .chart-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .chart-subtitle {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text2);
+  }
+
+  .legend-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  canvas { max-height: 270px; }
+
+  .phase-info {
+    display: flex;
+    gap: 8px;
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .phase-badge {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+
+  .phase-badge.bridge {
+    color: #1a6ef5;
+    border-color: rgba(26,110,245,0.25);
+    background: rgba(26,110,245,0.07);
+  }
+
+  .phase-badge.pension {
+    color: #0ea86e;
+    border-color: rgba(14,168,110,0.25);
+    background: rgba(14,168,110,0.07);
+  }
+
+  .survival-bar-wrap {
+    padding: 11px 13px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  .survival-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 7px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text2);
+  }
+
+  .survival-pct {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .bar-track {
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1), background 0.3s;
+  }
+
+  .sim-status {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text3);
+    text-align: right;
+    margin-top: 6px;
+  }
+
+  .info-tip {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 9px;
+    text-align: center;
+    line-height: 12px;
+    color: var(--text3);
+    cursor: help;
+    margin-left: 3px;
+    vertical-align: middle;
+  }
+
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="header-tag">// FIRE</div>
+    <h1>Will your money <span>outlast you?</span></h1>
+    <p class="subtitle">Monte Carlo · Finnish pension · Tax model</p>
+  </header>
+
+  <div class="layout">
+    <!-- LEFT: Inputs -->
+    <div class="panel">
+      <div class="panel-title">Parameters</div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Years until FIRE</span>
+          <span class="input-value" id="val-fire">5</span>
+        </div>
+        <input type="range" id="sl-fire" min="0" max="30" value="5" step="1">
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Years until pension starts</span>
+          <span class="input-value" id="val-pension">20</span>
+        </div>
+        <input type="range" id="sl-pension" min="1" max="45" value="20" step="1">
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Current assets (€)</span>
+          <span class="input-value" id="val-assets">500 000</span>
+        </div>
+        <input type="range" id="sl-assets" min="0" max="2000000" value="500000" step="10000">
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Monthly savings until FIRE (€) <span class="info-tip" title="Net monthly amount added to portfolio while still working">?</span></span>
+          <span class="input-value" id="val-savings">2 000</span>
+        </div>
+        <input type="range" id="sl-savings" min="0" max="10000" value="2000" step="100">
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Accrued pension (€/mo)</span>
+          <span class="input-value" id="val-accrued">1 500</span>
+        </div>
+        <input type="range" id="sl-accrued" min="500" max="5000" value="1500" step="50">
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Pension accrual per yr worked (€/mo) <span class="info-tip" title="Additional monthly pension earned for each extra year you keep working today">?</span></span>
+          <span class="input-value" id="val-accrual">80</span>
+        </div>
+        <input type="range" id="sl-accrual" min="0" max="400" value="80" step="5">
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Expected asset return (% p.a.)</span>
+          <span class="input-value" id="val-return">6.0%</span>
+        </div>
+        <input type="range" id="sl-return" min="1" max="12" value="6" step="0.1">
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Return volatility σ (% p.a.)</span>
+          <span class="input-value" id="val-vol">12.0%</span>
+        </div>
+        <input type="range" id="sl-vol" min="1" max="25" value="12" step="0.5">
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Inflation (% p.a.)</span>
+          <span class="input-value" id="val-infl">2.5%</span>
+        </div>
+        <input type="range" id="sl-infl" min="0" max="6" value="2.5" step="0.1">
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Tax rate (flat, on all income) (%)</span>
+          <span class="input-value" id="val-tax">30%</span>
+        </div>
+        <input type="range" id="sl-tax" min="0" max="50" value="30" step="1">
+      </div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Planning horizon (years from now)</span>
+          <span class="input-value" id="val-horizon">45 yrs</span>
+        </div>
+        <input type="range" id="sl-horizon" min="20" max="70" value="45" step="1">
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="input-group">
+        <div class="input-label">
+          <span>Monthly spending target (€, today's money)</span>
+          <span class="input-value" id="val-spend">3 000</span>
+        </div>
+        <input type="range" id="sl-spend" min="500" max="12000" value="3000" step="100">
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div class="right-col">
+      <div class="results-strip">
+        <div class="result-card good" id="card-sustainable">
+          <div class="result-label">Sustainable spending</div>
+          <div class="result-value" id="kpi-sustainable">€—</div>
+          <div class="result-sub">per month · after tax · 90% confidence</div>
+        </div>
+        <div class="result-card" id="card-survival">
+          <div class="result-label">Survival probability</div>
+          <div class="result-value" id="kpi-survival">—%</div>
+          <div class="result-sub" id="kpi-survival-sub">at target spend</div>
+        </div>
+        <div class="result-card" id="card-pension-total">
+          <div class="result-label">Total pension at start</div>
+          <div class="result-value" id="kpi-pension">€—</div>
+          <div class="result-sub">per month · gross</div>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Portfolio paths · Monte Carlo simulation</div>
+            <div class="chart-subtitle">1 000 simulations · real (inflation-adjusted) values</div>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#1a6ef5"></div>Median</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(26,110,245,0.35)"></div>25–75th</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(26,110,245,0.12)"></div>5–95th</div>
+          </div>
+        </div>
+        <canvas id="mc-chart"></canvas>
+        <div class="phase-info">
+          <div class="phase-badge bridge" id="badge-bridge">Bridge: — yrs</div>
+          <div class="phase-badge pension" id="badge-pension">Pension: — yrs</div>
+        </div>
+      </div>
+
+      <div class="survival-bar-wrap">
+        <div class="survival-label">
+          <span>Portfolio survival probability at target spending</span>
+          <span class="survival-pct" id="surv-pct">—%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" id="surv-bar" style="width:0%"></div>
+        </div>
+        <div class="sim-status" id="sim-status">Calculating…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const N_SIM = 1000;
+let chartInstance = null;
+let debounceTimer = null;
+
+function getParams() {
+  return {
+    yearsToFire:    +document.getElementById('sl-fire').value,
+    yearsToPension: +document.getElementById('sl-pension').value,
+    assets:         +document.getElementById('sl-assets').value,
+    monthlySavings: +document.getElementById('sl-savings').value,
+    accruedPension: +document.getElementById('sl-accrued').value,
+    accrualPerYear: +document.getElementById('sl-accrual').value,
+    returnMean:     +document.getElementById('sl-return').value / 100,
+    returnVol:      +document.getElementById('sl-vol').value / 100,
+    inflation:      +document.getElementById('sl-infl').value / 100,
+    taxRate:        +document.getElementById('sl-tax').value / 100,
+    horizon:        +document.getElementById('sl-horizon').value,
+    targetSpend:    +document.getElementById('sl-spend').value,
+  };
+}
+
+function randn() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function simulate(p, monthlySpend) {
+  const { yearsToFire, yearsToPension, assets, monthlySavings,
+          accruedPension, accrualPerYear, returnMean, returnVol,
+          inflation, taxRate, horizon } = p;
+
+  const bridgeYears = Math.max(0, yearsToPension - yearsToFire);
+  if (horizon <= yearsToFire) return [];
+  const simulationYears = horizon - yearsToFire;
+
+  // Grow portfolio deterministically pre-FIRE, including monthly savings
+  let portfolio = assets;
+  for (let y = 0; y < yearsToFire; y++) {
+    portfolio = portfolio * (1 + returnMean) + monthlySavings * 12;
+  }
+
+  // Pension at FIRE: accrued + years worked * accrual rate, after tax
+  const grossPension = accruedPension + yearsToFire * accrualPerYear;
+  const netPensionReal = grossPension * (1 - taxRate);
+
+  const path = [];
+  let deflator = Math.pow(1 + inflation, yearsToFire);
+
+  for (let yr = 0; yr < simulationYears; yr++) {
+    const r = returnMean + returnVol * randn();
+    portfolio *= (1 + r);
+    deflator *= (1 + inflation);
+
+    const nominalSpend = monthlySpend * 12 * deflator;
+    const pensionIncome = yr >= bridgeYears ? netPensionReal * 12 * deflator : 0;
+    const withdrawal = Math.max(0, nominalSpend - pensionIncome);
+    // gross up withdrawal for tax (capital gains / drawdown tax)
+    const grossWithdrawal = withdrawal / (1 - taxRate);
+    portfolio -= grossWithdrawal;
+
+    if (portfolio < 0) {
+      path.push(0);
+      for (let r2 = yr + 1; r2 < simulationYears; r2++) path.push(0);
+      return path;
+    }
+    path.push(portfolio / deflator);
+  }
+  return path;
+}
+
+function runMC(p, monthlySpend) {
+  const { yearsToFire, horizon } = p;
+  const simulationYears = horizon - yearsToFire;
+  if (simulationYears <= 0) return null;
+
+  const paths = [];
+  for (let i = 0; i < N_SIM; i++) paths.push(simulate(p, monthlySpend));
+
+  const pct = (arr, q) => {
+    const sorted = [...arr].sort((a, b) => a - b);
+    return sorted[Math.max(0, Math.floor(q * sorted.length) - 1)];
+  };
+
+  const years = Array.from({length: simulationYears}, (_, i) => `Y+${yearsToFire + i}`);
+  const p5=[],p25=[],p50=[],p75=[],p95=[];
+  for (let yr = 0; yr < simulationYears; yr++) {
+    const vals = paths.map(path => path[yr] ?? 0);
+    p5.push(pct(vals,0.05)); p25.push(pct(vals,0.25)); p50.push(pct(vals,0.50));
+    p75.push(pct(vals,0.75)); p95.push(pct(vals,0.95));
+  }
+  const survived = paths.filter(path => (path[path.length-1] ?? 0) > 0).length;
+  return { years, p5, p25, p50, p75, p95, survivalProb: survived / N_SIM };
+}
+
+function findSustainableSpend(p, targetProb = 0.90) {
+  let lo = 500, hi = 30000, best = lo;
+  for (let iter = 0; iter < 18; iter++) {
+    const mid = (lo + hi) / 2;
+    const res = runMC(p, mid);
+    if (!res) return lo;
+    if (res.survivalProb >= targetProb) { best = mid; lo = mid; } else { hi = mid; }
+  }
+  return Math.round(best / 50) * 50;
+}
+
+function renderChart(years, p5, p25, p50, p75, p95) {
+  const ctx = document.getElementById('mc-chart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  const fmt = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : (v/1e3).toFixed(0)+'k';
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        { data: p95, fill: false, borderColor: 'transparent', pointRadius: 0, tension: 0.4 },
+        { data: p5,  fill: '-1', backgroundColor: 'rgba(26,110,245,0.07)', borderColor: 'transparent', pointRadius: 0, tension: 0.4 },
+        { data: p75, fill: false, borderColor: 'transparent', pointRadius: 0, tension: 0.4 },
+        { data: p25, fill: '-1', backgroundColor: 'rgba(26,110,245,0.15)', borderColor: 'transparent', pointRadius: 0, tension: 0.4 },
+        { data: p50, fill: false, borderColor: '#1a6ef5', borderWidth: 2.5, pointRadius: 0, tension: 0.4 },
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#ffffff',
+          borderColor: '#dde1ea',
+          borderWidth: 1,
+          titleColor: '#5a6278',
+          bodyColor: '#1a1f2e',
+          titleFont: { family: 'DM Mono', size: 11 },
+          bodyFont: { family: 'DM Mono', size: 12 },
+          callbacks: {
+            title: items => items[0].label,
+            label: item => {
+              const labels = ['95th pct','5th pct','75th pct','25th pct','Median'];
+              return `  ${labels[item.datasetIndex]}: €${fmt(item.raw)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { color: '#9ba3b8', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 10 },
+          title: { display: true, text: 'Years from now', color: '#9ba3b8', font: { family: 'DM Mono', size: 10 } }
+        },
+        y: {
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { color: '#9ba3b8', font: { family: 'DM Mono', size: 10 }, callback: v => '€'+fmt(v) },
+          title: { display: true, text: 'Real portfolio value', color: '#9ba3b8', font: { family: 'DM Mono', size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+function update() {
+  const p = getParams();
+  const { yearsToFire, yearsToPension, horizon } = p;
+  if (yearsToFire >= horizon) {
+    document.getElementById('sim-status').textContent = 'FIRE years exceed horizon.';
+    return;
+  }
+
+  const bridgeYears = Math.max(0, yearsToPension - yearsToFire);
+  const pensionYears = Math.max(0, horizon - yearsToPension);
+
+  const grossPension = p.accruedPension + p.yearsToFire * p.accrualPerYear;
+  document.getElementById('kpi-pension').textContent = '€' + Math.round(grossPension).toLocaleString('fi-FI');
+
+  const res = runMC(p, p.targetSpend);
+  if (!res) return;
+
+  const sustainable = findSustainableSpend(p, 0.90);
+  document.getElementById('kpi-sustainable').textContent = '€' + sustainable.toLocaleString('fi-FI');
+
+  const survPct = Math.round(res.survivalProb * 100);
+  document.getElementById('kpi-survival').textContent = survPct + '%';
+  document.getElementById('card-survival').className = 'result-card ' + (survPct >= 85 ? 'good' : survPct >= 65 ? 'warn' : 'bad');
+
+  const bar = document.getElementById('surv-bar');
+  bar.style.width = survPct + '%';
+  bar.style.background = survPct >= 85 ? 'var(--success)' : survPct >= 65 ? 'var(--warn)' : 'var(--danger)';
+  document.getElementById('surv-pct').textContent = survPct + '%';
+
+  document.getElementById('badge-bridge').textContent = `Bridge: ${bridgeYears} yrs (no pension)`;
+  document.getElementById('badge-pension').textContent = `Pension: ${pensionYears} yrs`;
+  document.getElementById('sim-status').textContent = `${N_SIM.toLocaleString()} simulations · ${new Date().toLocaleTimeString('fi-FI')}`;
+
+  renderChart(res.years, res.p5, res.p25, res.p50, res.p75, res.p95);
+}
+
+function scheduleUpdate() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(update, 80);
+}
+
+function bindSlider(id, valId, fmt) {
+  const sl = document.getElementById(id);
+  const display = document.getElementById(valId);
+  const refresh = () => { display.textContent = fmt(+sl.value); scheduleUpdate(); };
+  sl.addEventListener('input', refresh);
+  refresh();
+}
+
+const fmtEur = v => v >= 1e6 ? (v/1e6).toFixed(2).replace('.',',')+'M' : v.toLocaleString('fi-FI');
+
+bindSlider('sl-fire',    'val-fire',    v => v + ' yrs');
+bindSlider('sl-pension', 'val-pension', v => v + ' yrs');
+bindSlider('sl-assets',  'val-assets',  fmtEur);
+bindSlider('sl-savings', 'val-savings', fmtEur);
+bindSlider('sl-accrued', 'val-accrued', fmtEur);
+bindSlider('sl-accrual', 'val-accrual', fmtEur);
+bindSlider('sl-return',  'val-return',  v => (+v).toFixed(1) + '%');
+bindSlider('sl-vol',     'val-vol',     v => (+v).toFixed(1) + '%');
+bindSlider('sl-infl',    'val-infl',    v => (+v).toFixed(1) + '%');
+bindSlider('sl-tax',     'val-tax',     v => v + '%');
+bindSlider('sl-horizon', 'val-horizon', v => v + ' yrs');
+bindSlider('sl-spend',   'val-spend',   fmtEur);
+
+update();
+</script>
+</body>
+</html>
